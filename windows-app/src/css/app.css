@@ -1,0 +1,175 @@
+/* Main layout styles */
+body {
+  font-size: 0.9rem;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f8f9fa;
+  color: #212529;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  padding: 48px 0 0;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar .nav-link {
+  font-weight: 500;
+  color: #333;
+  padding: 0.5rem 1rem;
+  margin: 0.2rem 0;
+  border-radius: 0.25rem;
+}
+
+.sidebar .nav-link.active {
+  color: #2470dc;
+  background-color: rgba(36, 112, 220, 0.1);
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Task card styles */
+.task-card {
+  margin-bottom: 1rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border: none;
+}
+
+.task-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.task-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.status-not-started {
+  background-color: #dc3545;
+  color: white;
+}
+
+.status-in-progress {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.status-completed {
+  background-color: #198754;
+  color: white;
+}
+
+/* Calendar styles */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+}
+
+.calendar-header {
+  padding: 0.75rem;
+  background-color: #f8f9fa;
+  text-align: center;
+  font-weight: bold;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.calendar-cell {
+  position: relative;
+  min-height: 100px;
+  padding: 0.5rem;
+  border: 1px solid #dee2e6;
+  background-color: #fff;
+}
+
+.calendar-cell.today {
+  background-color: #e8f4ff;
+  font-weight: bold;
+}
+
+.calendar-cell.text-muted {
+  color: #6c757d;
+  background-color: #f8f9fa;
+}
+
+.calendar-tasks {
+  margin-top: 0.5rem;
+}
+
+.calendar-task {
+  margin-bottom: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.calendar-task-not-started {
+  background-color: rgba(220, 53, 69, 0.2);
+  border-left: 3px solid #dc3545;
+}
+
+.calendar-task-in-progress {
+  background-color: rgba(255, 193, 7, 0.2);
+  border-left: 3px solid #ffc107;
+}
+
+.calendar-task-completed {
+  background-color: rgba(25, 135, 84, 0.2);
+  border-left: 3px solid #198754;
+}
+
+/* Utility classes */
+.tasks-container:empty::after {
+  content: 'No tasks to display';
+  display: block;
+  text-align: center;
+  color: #6c757d;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.page-container {
+  padding: 1rem 0;
+  min-height: 80vh;
+}
+
+/* Responsive fixes */
+@media (max-width: 767.98px) {
+  .sidebar {
+    position: static;
+    height: auto;
+    padding-top: 1rem;
+  }
+} 

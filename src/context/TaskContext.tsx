@@ -1,5 +1,18 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
+// Define the electronAPI interface
+declare global {
+  interface Window {
+    electronAPI: {
+      loadTasks: (filePath: string) => Promise<any[]>;
+      saveTasks: (filePath: string, tasks: any[]) => Promise<boolean>;
+      getDefaultDataPath: () => Promise<string>;
+      chooseDataLocation: () => Promise<string | null>;
+      exportTasks: (format: 'json' | 'excel', tasks: any[]) => Promise<boolean>;
+    }
+  }
+}
+
 // API base URL
 const API_URL = 'http://localhost:9000/api';
 
@@ -23,6 +36,8 @@ interface TaskContextType {
   deleteTask: (id: string) => Promise<void>;
   exportTasks: (format: 'json' | 'excel') => void;
   importTasks: (file: File) => Promise<boolean>;
+  setDataFilePath: (path: string) => void;
+  dataFilePath: string | null;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -31,36 +46,46 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataFilePath, setDataFilePath] = useState<string | null>(null);
 
-  // Fetch tasks from the API on component mount
+  // Load tasks from file when the component mounts or when dataFilePath changes
   useEffect(() => {
-    const fetchTasks = async () => {
+    const loadTasks = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}/tasks`);
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch tasks');
+        // If we have a dataFilePath, use it to load tasks via IPC
+        if (dataFilePath) {
+          const loadedTasks = await window.electronAPI.loadTasks(dataFilePath);
+          setTasks(loadedTasks);
+          setError(null);
+        } else {
+          // Use the default location or show dialog to select location
+          const defaultLocation = await window.electronAPI.getDefaultDataPath();
+          setDataFilePath(defaultLocation);
+          
+          const loadedTasks = await window.electronAPI.loadTasks(defaultLocation);
+          setTasks(loadedTasks);
+          setError(null);
         }
-        
-        const data = await response.json();
-        setTasks(data);
-        setError(null);
       } catch (err) {
-        console.error('Error fetching tasks:', err);
+        console.error('Error loading tasks:', err);
         setError('Failed to load tasks. Please try again later.');
-        // Fallback to localStorage if API fails
+        
+        // Fallback to localStorage
         const savedTasks = localStorage.getItem('tasks');
         if (savedTasks) {
           setTasks(JSON.parse(savedTasks));
+        } else {
+          setTasks([]); // Start with empty array if no data
         }
       } finally {
         setLoading(false);
       }
     };
     
-    fetchTasks();
-  }, []);
+    loadTasks();
+  }, [dataFilePath]);
 
   // Keep localStorage as backup
   useEffect(() => {
@@ -69,129 +94,68 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [tasks, loading]);
 
+  // Save tasks to file whenever tasks change
+  useEffect(() => {
+    const saveTasks = async () => {
+      if (!loading && dataFilePath) {
+        try {
+          await window.electronAPI.saveTasks(dataFilePath, tasks);
+        } catch (err) {
+          console.error('Error saving tasks to file:', err);
+          setError('Failed to save tasks to file. Your changes are saved in browser storage only.');
+        }
+      }
+    };
+    
+    saveTasks();
+  }, [tasks, dataFilePath, loading]);
+
   const addTask = async (task: Omit<Task, 'id' | 'createdAt'>) => {
     try {
-      const response = await fetch(`${API_URL}/tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(task),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to add task');
-      }
-      
-      const newTask = await response.json();
-      setTasks(prevTasks => [...prevTasks, newTask]);
-      setError(null);
-    } catch (err) {
-      console.error('Error adding task:', err);
-      setError('Failed to add task. Please try again.');
-      
-      // Fallback: Add task locally
       const newTask: Task = {
         ...task,
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
       };
+      
+      // Update state first for immediate UI feedback
       setTasks(prevTasks => [...prevTasks, newTask]);
+      setError(null);
+    } catch (err) {
+      console.error('Error adding task:', err);
+      setError('Failed to add task. Please try again.');
     }
   };
 
   const updateTask = async (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
     try {
-      const response = await fetch(`${API_URL}/tasks/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update task');
-      }
-      
-      const updatedTask = await response.json();
+      // Update task in local state
       setTasks(prevTasks => 
-        prevTasks.map(task => (task.id === id ? updatedTask : task))
+        prevTasks.map(task => (task.id === id ? { ...task, ...updates } : task))
       );
       setError(null);
     } catch (err) {
       console.error('Error updating task:', err);
       setError('Failed to update task. Please try again.');
-      
-      // Fallback: Update task locally
-      setTasks(prevTasks => 
-        prevTasks.map(task => (task.id === id ? { ...task, ...updates } : task))
-      );
     }
   };
 
   const deleteTask = async (id: string) => {
     try {
-      const response = await fetch(`${API_URL}/tasks/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete task');
-      }
-      
+      // Remove task from local state
       setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
       setError(null);
     } catch (err) {
       console.error('Error deleting task:', err);
       setError('Failed to delete task. Please try again.');
-      
-      // Fallback: Delete task locally
-      setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
     }
   };
 
   const exportTasks = (format: 'json' | 'excel') => {
     if (format === 'json') {
-      const dataStr = JSON.stringify(tasks, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-      const exportFileDefaultName = `task-tracker-export-${new Date().toISOString().slice(0, 10)}.json`;
-
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileDefaultName);
-      linkElement.click();
+      window.electronAPI.exportTasks('json', tasks);
     } else if (format === 'excel') {
-      import('exceljs').then((ExcelJS) => {
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Tasks');
-        
-        // Add headers
-        worksheet.addRow(['ID', 'Title', 'Description', 'Date', 'Status', 'Created At']);
-        
-        // Add data
-        tasks.forEach(task => {
-          worksheet.addRow([
-            task.id,
-            task.title,
-            task.description,
-            task.date,
-            task.status,
-            task.createdAt
-          ]);
-        });
-        
-        // Generate file and trigger download
-        workbook.xlsx.writeBuffer().then((buffer) => {
-          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          const url = window.URL.createObjectURL(blob);
-          const linkElement = document.createElement('a');
-          linkElement.href = url;
-          linkElement.download = `task-tracker-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
-          linkElement.click();
-          window.URL.revokeObjectURL(url);
-        });
-      });
+      window.electronAPI.exportTasks('excel', tasks);
     }
   };
 
@@ -210,52 +174,19 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
             return;
           }
           
-          // Send to server
-          const response = await fetch(`${API_URL}/tasks/import`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(importedTasks),
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to import tasks');
-          }
-          
-          // Refresh tasks from server
-          const tasksResponse = await fetch(`${API_URL}/tasks`);
-          if (tasksResponse.ok) {
-            const updatedTasks = await tasksResponse.json();
-            setTasks(updatedTasks);
-          }
-          
+          // Update tasks in state
+          setTasks(importedTasks);
           setError(null);
           resolve(true);
         } catch (error) {
           console.error('Error importing tasks:', error);
           setError('Failed to import tasks. Please try again.');
-          
-          // Fallback: Import locally
-          try {
-            const content = event.target?.result as string;
-            const importedTasks = JSON.parse(content);
-            
-            if (Array.isArray(importedTasks)) {
-              setTasks(importedTasks);
-              resolve(true);
-              return;
-            }
-          } catch (err) {
-            console.error('Error in fallback import:', err);
-          }
-          
           resolve(false);
         }
       };
       
       reader.onerror = () => {
-        setError('Failed to read file. Please try again.');
+        setError('Failed to read the file. Please try again.');
         resolve(false);
       };
       
@@ -264,25 +195,29 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <TaskContext.Provider value={{ 
-      tasks, 
-      loading,
-      error,
-      addTask, 
-      updateTask, 
-      deleteTask, 
-      exportTasks,
-      importTasks
-    }}>
+    <TaskContext.Provider
+      value={{
+        tasks,
+        loading,
+        error,
+        addTask,
+        updateTask,
+        deleteTask,
+        exportTasks,
+        importTasks,
+        setDataFilePath,
+        dataFilePath
+      }}
+    >
       {children}
     </TaskContext.Provider>
   );
 };
 
-export const useTasks = () => {
+export const useTaskContext = () => {
   const context = useContext(TaskContext);
   if (context === undefined) {
-    throw new Error('useTasks must be used within a TaskProvider');
+    throw new Error('useTaskContext must be used within a TaskProvider');
   }
   return context;
 }; 

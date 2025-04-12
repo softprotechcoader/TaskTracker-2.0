@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Tracker Dashboard</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div id="dashboard-container">
+        <!-- Dashboard will be rendered here by the JavaScript -->
+    </div>
+    
+    <script src="js/dashboard.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sample data for demonstration
+            const sampleStats = {
+                productivityScore: 85,
+                completed: 42,
+                inProgress: 15,
+                overdue: 3,
+                total: 60,
+                mostProductiveDay: {
+                    day: 'Monday',
+                    completed: 12,
+                    hours: 4.5
+                },
+                weeklyTrend: [
+                    { day: 'Mon', completed: 12 },
+                    { day: 'Tue', completed: 8 },
+                    { day: 'Wed', completed: 10 },
+                    { day: 'Thu', completed: 7 },
+                    { day: 'Fri', completed: 5 },
+                    { day: 'Sat', completed: 0 },
+                    { day: 'Sun', completed: 0 }
+                ],
+                monthlyTrend: [
+                    { period: 'Week 1', completed: 25 },
+                    { period: 'Week 2', completed: 30 },
+                    { period: 'Week 3', completed: 20 },
+                    { period: 'Week 4', completed: 15 }
+                ],
+                yearlyTrend: [
+                    { period: 'Jan', completed: 45 },
+                    { period: 'Feb', completed: 52 },
+                    { period: 'Mar', completed: 48 },
+                    { period: 'Apr', completed: 60 },
+                    { period: 'May', completed: 55 },
+                    { period: 'Jun', completed: 70 },
+                    { period: 'Jul', completed: 65 },
+                    { period: 'Aug', completed: 75 },
+                    { period: 'Sep', completed: 68 },
+                    { period: 'Oct', completed: 72 },
+                    { period: 'Nov', completed: 42 },
+                    { period: 'Dec', completed: 58 }
+                ]
+            };
+            
+            // Initialize the dashboard
+            const dashboard = new Dashboard(sampleStats, 'dashboard-container');
+            dashboard.initialize();
+        });
+    </script>
+</body>
+</html> 

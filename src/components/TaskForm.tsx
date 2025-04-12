@@ -13,15 +13,15 @@ import {
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { format } from 'date-fns';
-import { useTasks, Task, TaskStatus } from '../context/TaskContext';
+import { Task, TaskStatus, useTaskContext } from '../context/TaskContext';
 
 interface TaskFormProps {
   task?: Task;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const TaskForm = ({ task, onClose }: TaskFormProps) => {
-  const { addTask, updateTask } = useTasks();
+  const { addTask, updateTask } = useTaskContext();
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
   const [date, setDate] = useState<Date | null>(task?.date ? new Date(task.date) : new Date());

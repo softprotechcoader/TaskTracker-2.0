@@ -9,6 +9,7 @@
 # Production
 /dist
 /build
+/dist_electron
 
 # Misc
 .DS_Store
@@ -40,6 +41,12 @@ node_modules
 /release/**/*
 app.asar
 win-unpacked
+
+# Installer and portable files
+Task-Tracker-Installer/
+Task-Tracker-Portable/
+Task-Tracker-Portable.zip
+*.exe
 
 # Server data
 /server/tasks.json

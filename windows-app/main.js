@@ -2,48 +2,37 @@ const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-// Import ExcelJS dynamically when needed instead of at the top level
-// This helps avoid issues during build time
-
+// Global references to prevent garbage collection
 let mainWindow;
 const DEFAULT_DATA_FILENAME = 'task-tracker-data.json';
 
+// Creates the main application window
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    title: 'Task Tracker',
+    icon: path.join(__dirname, 'assets', 'icons', 'icon.ico'),
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: false, 
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     }
   });
 
-  if (isDev()) {
-    mainWindow.loadURL('http://localhost:3001');
-    mainWindow.webContents.openDevTools();
-  } else {
-    // Look for index.html in build directory
-    const indexPath = path.join(app.getAppPath(), 'build', 'index.html');
-    if (fs.existsSync(indexPath)) {
-      mainWindow.loadFile(indexPath);
-    } else {
-      console.error('Could not find index.html');
-      dialog.showErrorBox('UI Error', 'Could not find the application UI files.');
-    }
-    mainWindow.setMenu(null);
-  }
+  // Load the main HTML file
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
   
+  // Remove the menu bar
+  mainWindow.setMenu(null);
+  
+  // Clean up resources when window is closed
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
-function isDev() {
-  return process.env.NODE_ENV === 'development';
-}
-
-// Get default location for task data file
+// Get default location for task data file (in Documents folder)
 function getDefaultDataPath() {
   const documentsPath = app.getPath('documents');
   return path.join(documentsPath, 'TaskTracker', DEFAULT_DATA_FILENAME);
@@ -86,39 +75,49 @@ async function saveTasks(filePath, tasks) {
   }
 }
 
-// Export tasks to a file (JSON or Excel)
+// Export tasks to a file (only JSON for simplicity)
 async function exportTasks(format, tasks) {
   try {
     const options = {
       title: 'Export Tasks',
       defaultPath: app.getPath('documents') + 
-        `/TaskTracker-Export-${new Date().toISOString().slice(0, 10)}.${format === 'json' ? 'json' : 'xlsx'}`,
+        `/TaskTracker-Export-${new Date().toISOString().slice(0, 10)}.json`,
       filters: [
-        { name: format === 'json' ? 'JSON Files' : 'Excel Files', 
-          extensions: [format === 'json' ? 'json' : 'xlsx'] }
+        { name: 'JSON Files', extensions: ['json'] }
       ]
     };
     
     const { filePath } = await dialog.showSaveDialog(mainWindow, options);
     if (!filePath) return; // User cancelled
     
-    if (format === 'json') {
-      // JSON export
-      fs.writeFileSync(filePath, JSON.stringify(tasks, null, 2), 'utf8');
-    } else {
-      // For Excel, we'll just save as JSON for now and show a message
-      const jsonFilePath = filePath.replace('.xlsx', '.json');
-      fs.writeFileSync(jsonFilePath, JSON.stringify(tasks, null, 2), 'utf8');
-      dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: 'Export Information',
-        message: 'Excel export functionality requires additional setup. Your data has been exported as JSON instead.',
-        detail: `File saved as: ${jsonFilePath}`
-      });
-    }
+    fs.writeFileSync(filePath, JSON.stringify(tasks, null, 2), 'utf8');
+    return true;
   } catch (error) {
     console.error('Error exporting tasks:', error);
     dialog.showErrorBox('Export Error', `Failed to export tasks: ${error.message}`);
+    return false;
+  }
+}
+
+// Import tasks from a file
+async function importTasks(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+    
+    const data = fs.readFileSync(filePath, 'utf8');
+    const importedTasks = JSON.parse(data);
+    
+    if (!Array.isArray(importedTasks)) {
+      throw new Error('Invalid task data: Not an array');
+    }
+    
+    return importedTasks;
+  } catch (error) {
+    console.error('Error importing tasks:', error);
+    dialog.showErrorBox('Import Error', `Failed to import tasks: ${error.message}`);
+    return null;
   }
 }
 
@@ -152,14 +151,30 @@ function setupIpcHandlers() {
   });
   
   // Export tasks to file
-  ipcMain.handle('export-tasks', async (event, format, tasks) => {
-    await exportTasks(format, tasks);
-    return true;
+  ipcMain.handle('export-tasks', async (event, tasks) => {
+    return await exportTasks('json', tasks);
+  });
+  
+  // Import tasks from file
+  ipcMain.handle('import-tasks', async (event, filePath) => {
+    return await importTasks(filePath);
+  });
+  
+  // Choose file for import
+  ipcMain.handle('choose-import-file', async () => {
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select File to Import',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    
+    return filePaths && filePaths.length > 0 ? filePaths[0] : null;
   });
 }
 
+// Initialize when Electron is ready
 app.whenReady().then(() => {
-  console.log(`Application started. App path: ${app.getAppPath()}`);
+  console.log('Application started');
   
   // Set up IPC handlers
   setupIpcHandlers();
@@ -172,6 +187,7 @@ app.whenReady().then(() => {
   });
 });
 
+// Quit when all windows are closed, except on macOS
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 }); 

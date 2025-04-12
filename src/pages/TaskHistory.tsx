@@ -14,11 +14,11 @@ import {
 import { DatePicker } from '@mui/x-date-pickers';
 import { FileDownload as ExportIcon } from '@mui/icons-material';
 import { isAfter, isBefore, parseISO } from 'date-fns';
-import { useTasks } from '../context/TaskContext';
+import { useTaskContext } from '../context/TaskContext';
 import TaskList from '../components/TaskList';
 
 const TaskHistory = () => {
-  const { tasks, exportTasks } = useTasks();
+  const { tasks, exportTasks } = useTaskContext();
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');

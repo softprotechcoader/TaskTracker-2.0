@@ -24,10 +24,10 @@ import {
 import { format } from 'date-fns';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
-import { useTasks, Task } from '../context/TaskContext';
+import { Task, useTaskContext } from '../context/TaskContext';
 
 const Dashboard = () => {
-  const { tasks, loading, error, exportTasks, importTasks } = useTasks();
+  const { tasks, loading, error, exportTasks, importTasks } = useTaskContext();
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const exportMenuOpen = Boolean(exportAnchorEl);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,7 +220,7 @@ const Dashboard = () => {
       </Grid>
 
       <Box sx={{ mb: 4 }}>
-        <TaskForm />
+        <TaskForm onClose={() => {}} />
       </Box>
 
       <Box sx={{ mb: 3 }}>

@@ -14,12 +14,12 @@ import {
   Add as AddIcon
 } from '@mui/icons-material';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isToday } from 'date-fns';
-import { useTasks, Task } from '../context/TaskContext';
+import { Task, useTaskContext } from '../context/TaskContext';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
 
 const TaskCalendar = () => {
-  const { tasks } = useTasks();
+  const { tasks } = useTaskContext();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
