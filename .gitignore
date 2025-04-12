@@ -40,6 +40,13 @@ node_modules
 /release/**/*
 app.asar
 win-unpacked
+*.exe
+*.dmg
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
 
 # Server data
 /server/tasks.json
